@@ -4,12 +4,7 @@
     "version": "1.0",
     "description": "Detects phishing websites using machine learning techniques",
     "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "icons/safe-16.png",
-        "48": "icons/safe-48.png",
-        "128": "icons/safe-128.png"
-      }
+      "default_popup": "popup.html"
     },
     "permissions": [
       "tabs",
@@ -33,16 +28,9 @@
     ],
     "web_accessible_resources": [{
       "resources": [
-        "phishing_detector.js",
-        "model/random_forest.js",
-        "model/phishing_model.json"
+        "phishing_detector.js"
       ],
       "matches": ["<all_urls>"]
     }],
-    "icons": {
-      "16": "icons/safe-16.png",
-      "48": "icons/safe-48.png",
-      "128": "icons/safe-128.png"
-    }
 }
   
