@@ -190,18 +190,11 @@ If the rank of the domain < 100000, the vlaue of this feature is 1 (phishing) el
 
 # 12.Web traffic (Web_Traffic)
 def web_traffic(url):
-  try:
-    #Filling the whitespaces in the URL if any
-    url = urllib.parse.quote(url)
-    rank = BeautifulSoup(urllib.request.urlopen("http://data.alexa.com/data?cli=10&dat=s&url=" + url).read(), "xml").find(
-        "REACH")['RANK']
-    rank = int(rank)
-  except TypeError:
-        return 1
-  if rank <100000:
-    return 1
-  else:
-    return 0
+  # The Alexa top sites service (data.alexa.com) was retired in May 2022.
+  # This function previously queried that service.
+  # Returning a default value of 1, as this was the behavior for TypeError
+  # (often indicating low/unknown traffic, which can be a phishing indicator).
+  return 1
 
 """#### **3.2.3. Age of Domain**
 
