@@ -1,26 +1,41 @@
-# Phishing Detector Chrome Extension
+# Phishing Detector Chrome Extension (Client-Server Architecture)
 
-This Chrome extension helps detect phishing websites using a machine learning model.
+This Chrome extension helps detect phishing websites. It uses a machine learning model served by a Python Flask backend, with the extension acting as a client.
 
-## Model Training
+## Overall Architecture
 
-This section describes the process of training the machine learning model used by the extension.
+The system is composed of three main parts:
+1.  **Model Training Script (`train_model.py`):** A Python script to train the Random Forest classification model using a provided dataset.
+2.  **Prediction Server (`app.py`):** A Python Flask application that loads the trained model and exposes an API endpoint for predictions.
+3.  **Browser Extension (`phishing_detector.js` and other extension files):** The Chrome extension that extracts features from the currently viewed URL and sends these features to the prediction server to get a phishing likelihood score.
 
-### Purpose of `train_model.py`
+## Prerequisites
 
-The `train_model.py` script is responsible for training the phishing detection model. It takes a dataset of website features, trains a RandomForestClassifier, and saves the trained model to a file.
+To run this project, you'll need:
 
-### Prerequisites
+*   **Python 3.x**
+*   **Python Libraries:**
+    *   `pandas` (for data manipulation in `train_model.py`)
+    *   `scikit-learn` (for model training in `train_model.py`)
+    *   `numpy` (for numerical operations in `app.py`)
+    *   `Flask` (for the prediction server in `app.py`)
+    You can typically install these using pip:
+    ```bash
+    pip install pandas scikit-learn numpy Flask
+    ```
+    (A `requirements.txt` file would be ideal for managing these dependencies).
+*   **Google Chrome Browser:** To install and run the extension.
+*   **Dataset:** `phishing_dataset.csv` for training (see details below).
 
-Before running the `train_model.py` script, ensure you have the following:
+## Components
 
-1.  **Python Environment:** Python 3.x installed with the following libraries:
-    *   `pandas`
-    *   `scikit-learn`
-2.  **Dataset:** A CSV file named `phishing_dataset.csv` must be present in the same directory as the `train_model.py` script. The dataset should have the following characteristics:
-    *   It must be a comma-separated values (CSV) file.
-    *   The last column of the CSV should be the target variable, named 'Result', where `1` indicates a phishing website and `0` indicates a legitimate website.
-    *   The preceding columns are the features used for training. The script currently expects the following features (ensure your `phishing_dataset.csv` has these columns):
+### 1. `train_model.py` (Model Training)
+
+*   **Purpose:** This script trains a Random Forest classifier to distinguish between phishing and legitimate websites.
+*   **Prerequisites for running:**
+    *   A CSV file named `phishing_dataset.csv` must be present in the root directory.
+    *   The dataset must have features as columns and the last column named 'Result' as the target variable (1 for phishing, 0 for legitimate).
+    *   The expected features are (ensure your `phishing_dataset.csv` has these columns in this order, followed by 'Result'):
         *   `having_IP_Address`
         *   `URL_Length`
         *   `Shortining_Service`
@@ -51,42 +66,74 @@ Before running the `train_model.py` script, ensure you have the following:
         *   `Google_Index`
         *   `Links_pointing_to_page`
         *   `Statistical_report`
-        *   `Result` (Target Variable)
-
-### Steps to Run the Script
-
-1.  **Prepare the dataset:** Ensure `phishing_dataset.csv` is correctly formatted and placed in the root directory.
-2.  **Navigate to the script directory:** Open your terminal or command prompt and change the directory to where `train_model.py` is located.
-3.  **Run the script:** Execute the following command:
+*   **How to run:**
     ```bash
     python train_model.py
     ```
+*   **Output:**
+    *   `model/phishing_model.json`: The trained model, serialized as JSON. The `model` directory is created if it doesn't exist.
+    *   Accuracy score printed to the console.
 
-### Output
+### 2. `app.py` (Prediction Server)
 
-After successful execution, the `train_model.py` script will produce the following output:
+*   **Purpose:** This Flask application loads the `model/phishing_model.json` and serves predictions over an HTTP API.
+*   **How to run:**
+    ```bash
+    python app.py
+    ```
+    The server will start, typically on `http://127.0.0.1:5000/`.
+*   **API Endpoint:**
+    *   **Route:** `/predict`
+    *   **Method:** `POST`
+    *   **Request Body (JSON):** Expects a JSON object with a single key "features", which is a list of numerical feature values.
+        ```json
+        {
+            "features": [0, 1, 0, 1, ..., 0]
+        }
+        ```
+    *   **Response Body (JSON):** Returns a JSON object indicating if the site is phishing.
+        ```json
+        {"is_phishing": 1} // 1 for phishing, 0 for legitimate
+        ```
+        Or an error message if something goes wrong:
+        ```json
+        {"error": "Descriptive error message"}
+        ```
 
-*   **`model/phishing_model.json`**: This file contains the trained machine learning model, serialized in JSON format. The `model` directory will be created if it doesn't already exist. This file is then used by the Chrome extension to make predictions.
-*   **Accuracy Score**: The script will also print the accuracy of the trained model on the test set to the console.
+### 3. `phishing_detector.js` (Browser Extension Client)
+
+*   **Purpose:** This script runs as part of the Chrome extension. It extracts features from the current URL being viewed by the user.
+*   **Functionality:**
+    *   Extracts a list of feature values from the current web page's URL and content.
+    *   Sends these features as a JSON payload to the `app.py` server's `/predict` endpoint.
+    *   Receives the prediction (`0` or `1`) from the server.
+    *   (Logic for updating the extension's UI based on the prediction is handled by other parts of the extension, e.g., `popup.js` or `content.js`).
+
+## Workflow / How to Use
+
+1.  **Train the Model:**
+    *   Ensure `phishing_dataset.csv` is correctly formatted and in the project's root directory.
+    *   Run `python train_model.py`. This will generate/update `model/phishing_model.json`.
+2.  **Start the Prediction Server:**
+    *   Run `python app.py`. Keep this terminal window open.
+3.  **Load the Browser Extension:**
+    *   Open Chrome and navigate to `chrome://extensions/`.
+    *   Enable "Developer mode".
+    *   Click "Load unpacked" and select the directory containing the extension files (including `manifest.json`).
+    *   Once loaded, the extension will make API calls to the running `app.py` server when you visit web pages.
+
+## Important Note on Feature Consistency
+
+**CRITICAL:** The success of this phishing detector heavily relies on the consistency of features between the training phase and the prediction phase.
+
+*   The features extracted by `phishing_detector.js` (and sent to `app.py`) **MUST** be in the exact same order and have the same meaning/calculation as the columns in the `phishing_dataset.csv` used by `train_model.py` (when the 'Result' label column is excluded).
+*   Any mismatch in the number of features, their order, or how they are derived will lead to incorrect and unreliable predictions.
+*   The list of features in the `train_model.py` section above defines this expected order.
 
 ## Extension Installation and Usage
 
-(To be added: Instructions on how to load and use the Chrome extension)
+(This section may need further details specific to how the UI shows warnings, etc., which is outside the scope of the current backend changes. For now, it refers to standard extension loading.)
 
-## Model Usage in the Extension
-
-The trained phishing detection model, saved as `model/phishing_model.json`, is a crucial component of the Chrome extension. This section explains how the extension utilizes this model.
-
-The `phishing_detector.js` script is responsible for loading and using the trained model to classify URLs in real-time.
-
-1.  **Model Loading**:
-    *   When the extension initializes, the `PhishingDetector` class in `phishing_detector.js` automatically loads the model.
-    *   The `loadModel` method within this class fetches the `model/phishing_model.json` file. This is done using `chrome.runtime.getURL('model/phishing_model.json')` to get the correct path to the model file within the extension's context.
-    *   The fetched JSON data, which represents the trained Random Forest model, is then parsed and used to instantiate a `RandomForest` object.
-
-2.  **Feature Extraction and Prediction**:
-    *   When a URL needs to be classified, the `phishing_detector.js` script first extracts relevant features from the URL. These feature extraction methods are designed to mirror the features used during the model training phase.
-    *   The extracted features are then passed to the `predict` method of the loaded `RandomForest` model.
-    *   The model outputs a prediction score, which is then used to determine if the URL is likely to be a phishing attempt.
-
-This process allows the extension to dynamically analyze websites and warn users about potential phishing threats based on the patterns learned by the machine learning model.
+1.  Follow steps 1 and 2 in the "Workflow" section above (train model, start server).
+2.  Load the extension in Chrome as described in step 3 of the "Workflow".
+3.  When you browse websites, the extension will communicate with the local server to analyze the URL. (Further UI details on how warnings are displayed would go here).
