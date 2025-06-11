@@ -21,13 +21,17 @@ def read_root():
 @app.post("/predict")
 def predict(data: InputData):
     # Extract features from the URL
-    # featureExtraction should return a list of 17 features
+    # featureExtraction should return a list of 16 features
     extracted_features = featureExtraction(data.url)
 
-    # Convert to DataFrame, then DMatrix
-    # Ensure the DataFrame has the correct structure/column names if the model expects them
-    # For now, assuming the model was trained on features without explicit names, just an ordered list
-    df = pd.DataFrame([extracted_features])
+    feature_names = [
+        'Have_IP', 'Have_At', 'URL_Length', 'URL_Depth', 'Redirection',
+        'https_Domain', 'TinyURL', 'Prefix/Suffix', 'DNS_Record', 'Web_Traffic',
+        'Domain_Age', 'Domain_End', 'iFrame', 'Mouse_Over', 'Right_Click', 'Web_Forwards'
+    ]
+
+    # Convert to DataFrame with correct column names, then DMatrix
+    df = pd.DataFrame([extracted_features], columns=feature_names)
     dmatrix = xgb.DMatrix(df)
 
     # Get the raw prediction (probability)
