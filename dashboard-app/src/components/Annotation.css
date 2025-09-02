@@ -1,0 +1,28 @@
+.annotation-container {
+  position: relative;
+  cursor: crosshair;
+}
+
+.annotation-box {
+  position: absolute;
+  border: 2px solid red;
+  background-color: rgba(255, 0, 0, 0.2);
+}
+
+.annotation-label {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  background-color: red;
+  color: white;
+  padding: 2px 5px;
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+.annotation-form {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  display: flex;
+}
