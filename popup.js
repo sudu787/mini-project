@@ -1,8 +1,4 @@
-// Import the PhishingDetector class
-import { PhishingDetector } from './phishing_detector.js';
-
-// Initialize the phishing detector
-const detector = new PhishingDetector();
+// import { PhishingDetector } from './phishing_detector.js'; // Removed
 
 document.addEventListener("DOMContentLoaded", async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -15,12 +11,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         // Analyze current URL
-        const result = await detector.predict(tab.url);
-        
+        const response = await fetch('http://localhost:8000/predict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: tab.url }),
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json();
+
         // Create result display
         const resultContainer = document.createElement('div');
         resultContainer.className = 'result-container';
-        
+
         // Add risk score
         const scoreDiv = document.createElement('div');
         scoreDiv.className = `score-indicator ${result.is_phishing ? 'high-risk' : 'low-risk'}`;
@@ -35,25 +41,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         urlDiv.className = 'url-display';
         urlDiv.innerHTML = `<p>Analyzing: ${tab.url.substring(0, 50)}${tab.url.length > 50 ? '...' : ''}</p>`;
         resultContainer.appendChild(urlDiv);
-
-        // Add feature details
-        const featuresDiv = document.createElement('div');
-        featuresDiv.className = 'feature-details';
-        featuresDiv.innerHTML = '<h3>Detection Features:</h3>';
-        
-        const featureList = document.createElement('ul');
-        Object.entries(result.features).forEach(([key, value]) => {
-            const li = document.createElement('li');
-            li.className = value ? 'feature-warning' : 'feature-safe';
-            li.innerHTML = `
-                <span class="feature-name">${key.replace(/_/g, ' ')}</span>
-                <span class="feature-indicator">${value ? '⚠️' : '✅'}</span>
-            `;
-            featureList.appendChild(li);
-        });
-        
-        featuresDiv.appendChild(featureList);
-        resultContainer.appendChild(featuresDiv);
 
         // Clear and update results
         resultsDiv.innerHTML = '';
